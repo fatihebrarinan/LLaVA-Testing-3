@@ -1,18 +1,17 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
-import requests
-import base64
 import os
 from pathlib import Path
+import llava_backend
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
 # Create uploads folder if it doesn't exist
 Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True)
 
-# API URL for Ollama (using /api/generate as per official docs)
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
+# Model will be lazy-loaded on first request
+model = None
 
 @app.route('/')
 def index():
@@ -24,42 +23,44 @@ def uploaded_file(filename):
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    global model
     try:
+        # Lazy load the model on first request
+        if model is None:
+            print("Loading LLaVA One Vision model...")
+            model = llava_backend.get_model()
+            print("Model ready!")
+        
         data = request.json
         prompt = data.get('prompt', '')
         image_paths = data.get('image_paths', [])
         
-        # Prepare the request to Ollama (matching official API documentation)
-        payload = {
-            "model": "llava",
-            "prompt": prompt,
-            "stream": False
-        }
-        
-        # If there are images, encode them all in base64 and add to payload
+        # Convert relative paths to absolute paths
+        absolute_paths = []
         if image_paths:
-            encoded_images = []
             for image_path in image_paths:
                 full_path = os.path.join(app.config['UPLOAD_FOLDER'], image_path)
-                with open(full_path, 'rb') as img_file:
-                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                    encoded_images.append(img_data)
-            payload["images"] = encoded_images
+                if os.path.exists(full_path):
+                    absolute_paths.append(full_path)
         
-        # Send request to Ollama
-        response = requests.post(OLLAMA_API_URL, json=payload)
-        response.raise_for_status()
+        # Generate response using LLaVA One Vision
+        response_text = model.chat(prompt, absolute_paths if absolute_paths else None)
         
-        result = response.json()
         return jsonify({
             'success': True,
-            'response': result.get('response', '')
+            'response': response_text
         })
         
     except Exception as e:
+        import traceback
+        error_msg = str(e)
+        traceback_str = traceback.format_exc()
+        print(f"Error in chat: {error_msg}")
+        print(traceback_str)
+        
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': error_msg
         }), 500
 
 @app.route('/upload', methods=['POST'])

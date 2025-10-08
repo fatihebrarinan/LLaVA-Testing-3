@@ -75,8 +75,8 @@ async function uploadMultipleImages(files) {
     updateImagePreview();
     const count = uploadedImages.length;
     const msg = count === 1
-        ? 'Image uploaded! Ask me anything about it.'
-        : `${count} images uploaded! I can compare and analyze them together.`;
+        ? '✅ Image uploaded! Ask me anything about it using LLaVA One Vision.'
+        : `✅ ${count} images uploaded! I can compare and analyze them together with advanced reasoning.`;
     addMessage(msg, 'assistant');
 }
 
