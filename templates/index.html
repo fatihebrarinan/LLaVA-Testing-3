@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLaVA - Vision & Language AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 LLaVA</h1>
+            <p>Vision & Language AI Assistant</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Image Upload Section -->
+            <div class="card">
+                <div class="image-section">
+                    <h2>Upload Images</h2>
+                    <div class="image-upload" id="dropZone">
+                        <input type="file" id="fileInput" accept="image/*" multiple>
+                        <div class="upload-icon">📸</div>
+                        <p><strong>Click to upload</strong> or drag and drop</p>
+                        <p style="font-size: 14px; color: #666; margin-top: 8px;">Multiple images supported • PNG, JPG, GIF up to 16MB each</p>
+                    </div>
+                    <div id="imageGallery" class="image-gallery"></div>
+                    <button class="clear-btn" id="clearImage" style="display: none;">Clear All Images</button>
+                </div>
+            </div>
+
+            <!-- Chat Section -->
+            <div class="card">
+                <div class="chat-section">
+                    <h2 style="margin-bottom: 16px;">Chat</h2>
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message assistant">
+                            Hello! Upload one or more images and ask me anything about them. I can describe, analyze, compare images, and answer your questions.
+                        </div>
+                    </div>
+                    <div class="loading" id="loading">
+                        <span class="spinner"></span> Thinking...
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="promptInput" placeholder="Ask about the image(s)...">
+                        <button id="sendBtn">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" id="lightboxClose">×</button>
+        <img class="lightbox-content" id="lightboxImage" alt="Full size">
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
