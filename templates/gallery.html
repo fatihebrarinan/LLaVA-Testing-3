@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - LLaVA Image Search{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-header p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+    
+    .gallery-controls {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .gallery-stats {
+        display: flex;
+        gap: 2rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+        background: #f8f9fa;
+        padding: 0.25rem;
+        border-radius: 8px;
+    }
+    
+    .view-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .view-btn.active {
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .gallery-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .gallery-card {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .gallery-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    }
+    
+    .gallery-image {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+    
+    .gallery-info {
+        padding: 1rem;
+    }
+    
+    .gallery-caption {
+        color: #333;
+        line-height: 1.6;
+    }
+    
+    /* List view specific styles */
+    .gallery-card-list {
+        display: flex;
+        gap: 1.5rem;
+        flex-direction: row;
+    }
+    
+    .gallery-card-list .gallery-image {
+        width: 300px;
+        height: 200px;
+    }
+    
+    .gallery-card-list .gallery-info {
+        flex: 1;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 3rem;
+    }
+    
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .no-images {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 10px;
+        color: #666;
+    }
+    
+    .no-images-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .no-images a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    
+    .no-images a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Modal for image preview */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.9);
+    }
+    
+    .modal-content-wrapper {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        max-width: 90%;
+        max-height: 90%;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .modal-image {
+        max-width: 100%;
+        max-height: 70vh;
+        display: block;
+    }
+    
+    .modal-caption {
+        padding: 1.5rem;
+        background: white;
+        color: #333;
+        line-height: 1.6;
+    }
+    
+    .modal-close {
+        position: absolute;
+        top: 20px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 1001;
+    }
+    
+    .modal-close:hover {
+        color: #bbb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🖼️ Gallery</h1>
+    <p>Browse all indexed image-caption pairs</p>
+</div>
+
+<div class="gallery-controls">
+    <div class="gallery-stats">
+        <div class="stat-item">
+            <div class="stat-value" id="total-images">0</div>
+            <div class="stat-label">Total Images</div>
+        </div>
+    </div>
+    
+    <div class="view-toggle">
+        <button class="view-btn active" id="grid-view-btn" onclick="setView('grid')">
+            ⊞ Grid
+        </button>
+        <button class="view-btn" id="list-view-btn" onclick="setView('list')">
+            ☰ List
+        </button>
+    </div>
+</div>
+
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading gallery...</p>
+</div>
+
+<div id="gallery-container" class="gallery-grid" style="display: none;"></div>
+
+<!-- Modal for image preview -->
+<div id="image-modal" class="modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <div class="modal-content-wrapper">
+        <img class="modal-image" id="modal-image">
+        <div class="modal-caption" id="modal-caption"></div>
+    </div>
+</div>
+
+<script>
+    const galleryContainer = document.getElementById('gallery-container');
+    const loading = document.getElementById('loading');
+    const totalImagesElem = document.getElementById('total-images');
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const modalCaption = document.getElementById('modal-caption');
+    const gridViewBtn = document.getElementById('grid-view-btn');
+    const listViewBtn = document.getElementById('list-view-btn');
+    
+    let currentView = 'grid';
+    let allImages = [];
+    
+    // Load gallery on page load
+    window.addEventListener('load', loadGallery);
+    
+    async function loadGallery() {
+        loading.style.display = 'block';
+        galleryContainer.style.display = 'none';
+        
+        try {
+            const response = await fetch('/api/get-all-images');
+            const data = await response.json();
+            
+            if (data.success) {
+                allImages = data.results;
+                totalImagesElem.textContent = data.count;
+                displayGallery(allImages);
+            } else {
+                alert('Failed to load gallery: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error loading gallery: ' + error.message);
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+    
+    function displayGallery(images) {
+        galleryContainer.innerHTML = '';
+        galleryContainer.style.display = 'block';
+        
+        if (images.length === 0) {
+            galleryContainer.innerHTML = `
+                <div class="no-images">
+                    <div class="no-images-icon">📁</div>
+                    <h3>No images in gallery</h3>
+                    <p>Start by <a href="/upload">uploading some images</a></p>
+                </div>
+            `;
+            return;
+        }
+        
+        images.forEach(image => {
+            const card = document.createElement('div');
+            card.className = currentView === 'grid' ? 'gallery-card' : 'gallery-card gallery-card-list';
+            card.onclick = () => openModal(image.url, image.caption);
+            
+            card.innerHTML = `
+                <img src="${image.url}" alt="${image.caption}" class="gallery-image">
+                <div class="gallery-info">
+                    <div class="gallery-caption">${image.caption}</div>
+                </div>
+            `;
+            
+            galleryContainer.appendChild(card);
+        });
+    }
+    
+    function setView(view) {
+        currentView = view;
+        
+        if (view === 'grid') {
+            galleryContainer.className = 'gallery-grid';
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+        } else {
+            galleryContainer.className = 'gallery-list';
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+        }
+        
+        displayGallery(allImages);
+    }
+    
+    function openModal(imageUrl, caption) {
+        modal.style.display = 'block';
+        modalImage.src = imageUrl;
+        modalCaption.textContent = caption;
+    }
+    
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+    
+    // Close modal on click outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
+</script>
+{% endblock %}
+

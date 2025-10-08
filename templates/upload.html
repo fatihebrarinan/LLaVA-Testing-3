@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Upload & Index Images - LLaVA Image Search{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-header p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+    
+    .upload-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto 2rem;
+    }
+    
+    .drop-zone {
+        border: 3px dashed #667eea;
+        border-radius: 10px;
+        padding: 3rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #f8f9fa;
+    }
+    
+    .drop-zone:hover {
+        background: #e9ecef;
+        border-color: #764ba2;
+    }
+    
+    .drop-zone.dragover {
+        background: #e7e9fc;
+        border-color: #764ba2;
+        transform: scale(1.02);
+    }
+    
+    .drop-zone-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .drop-zone-text {
+        font-size: 1.1rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+    }
+    
+    .drop-zone-subtext {
+        font-size: 0.9rem;
+        color: #999;
+    }
+    
+    #file-input {
+        display: none;
+    }
+    
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .progress-section {
+        margin-top: 2rem;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 30px;
+        background: #e9ecef;
+        border-radius: 15px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .status-message {
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+    
+    .status-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .status-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .status-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+    
+    .indexed-images {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .indexed-image-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+    }
+    
+    .indexed-image-item img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 5px;
+    }
+    
+    .indexed-image-info {
+        flex: 1;
+    }
+    
+    .indexed-image-caption {
+        color: #333;
+        margin-top: 0.5rem;
+        line-height: 1.6;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #667eea;
+        color: white;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📤 Upload & Index Images</h1>
+    <p>Upload images to generate captions and add them to the searchable database</p>
+</div>
+
+<div class="upload-section">
+    <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone-icon">📁</div>
+        <div class="drop-zone-text">Drop images here or click to browse</div>
+        <div class="drop-zone-subtext">Supports JPG, PNG (max 50MB per image)</div>
+    </div>
+    <input type="file" id="file-input" accept="image/*" multiple>
+    
+    <div id="progress-section" class="progress-section" style="display: none;">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill">0%</div>
+        </div>
+        <div id="status-container"></div>
+    </div>
+    
+    <div id="indexed-container" style="margin-top: 2rem;"></div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const progressSection = document.getElementById('progress-section');
+    const progressFill = document.getElementById('progress-fill');
+    const statusContainer = document.getElementById('status-container');
+    const indexedContainer = document.getElementById('indexed-container');
+    
+    // Click to browse
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        handleFiles(files);
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        handleFiles(files);
+    });
+    
+    async function handleFiles(files) {
+        if (!files || files.length === 0) return;
+        
+        progressSection.style.display = 'block';
+        statusContainer.innerHTML = '';
+        indexedContainer.innerHTML = '';
+        
+        const totalFiles = files.length;
+        let processedFiles = 0;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Update status
+            addStatus(`Processing ${i + 1}/${totalFiles}: ${file.name}`, 'info');
+            
+            try {
+                const result = await uploadAndIndexImage(file);
+                
+                if (result.success) {
+                    addStatus(`✓ Successfully indexed: ${file.name}`, 'success');
+                    displayIndexedImage(result);
+                } else {
+                    addStatus(`✗ Failed to index ${file.name}: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addStatus(`✗ Error processing ${file.name}: ${error.message}`, 'error');
+            }
+            
+            processedFiles++;
+            const progress = Math.round((processedFiles / totalFiles) * 100);
+            progressFill.style.width = `${progress}%`;
+            progressFill.textContent = `${progress}%`;
+        }
+        
+        addStatus(`Completed! Processed ${processedFiles}/${totalFiles} images`, 'success');
+        fileInput.value = '';
+    }
+    
+    async function uploadAndIndexImage(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/index-image', {
+            method: 'POST',
+            body: formData
+        });
+        
+        return await response.json();
+    }
+    
+    function addStatus(message, type) {
+        const statusDiv = document.createElement('div');
+        statusDiv.className = `status-message status-${type}`;
+        statusDiv.textContent = message;
+        statusContainer.appendChild(statusDiv);
+        
+        // Auto-scroll to bottom
+        statusContainer.scrollTop = statusContainer.scrollHeight;
+    }
+    
+    function displayIndexedImage(result) {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'indexed-image-item';
+        itemDiv.innerHTML = `
+            <img src="${result.url}" alt="${result.filename}">
+            <div class="indexed-image-info">
+                <div><span class="badge">NEW</span> ${result.filename}</div>
+                <div class="indexed-image-caption">${result.caption}</div>
+            </div>
+        `;
+        indexedContainer.appendChild(itemDiv);
+    }
+</script>
+{% endblock %}
+

@@ -41,6 +41,7 @@ class LLaVABackend:
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
+            #Sets the variable device to device passes in as variable.
             self.device = device
         
         print(f"Loading LLaVA One Vision model on {self.device}...")
@@ -117,13 +118,14 @@ class LLaVABackend:
         if image_paths and len(image_paths) > 0:
             # Add image token for each image
             image_tokens = DEFAULT_IMAGE_TOKEN * len(image_paths)
+            #First gives the image tokens, then the prompt.
             question = f"{image_tokens}\n{prompt}"
             
             # Process images
             image_tensors, image_sizes = self.process_images_for_model(image_paths)
             
             if image_tensors is None:
-                return "Error: Could not process images"
+                return "Error: Could not process images!"
         else:
             question = prompt
             image_tensors = None
@@ -135,7 +137,7 @@ class LLaVABackend:
         conv.append_message(conv.roles[1], None)
         prompt_question = conv.get_prompt()
         
-        # Tokenize
+        # Tokenize the prompt
         input_ids = tokenizer_image_token(
             prompt_question,
             self.tokenizer,
@@ -143,7 +145,7 @@ class LLaVABackend:
             return_tensors="pt"
         ).unsqueeze(0).to(self.device)
         
-        # Generate
+        # Generate the response
         with torch.inference_mode():
             output_ids = self.model.generate(
                 input_ids,

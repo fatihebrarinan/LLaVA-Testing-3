@@ -6,11 +6,30 @@ A beautiful and modern web interface for LLaVA One Vision - a powerful multimoda
 
 - 🎨 Modern, responsive UI with separated CSS/JS
 - 📸 Multiple image upload support (drag-and-drop)
-- 🔍 Compare and analyze multiple images simultaneously
+- 🔍 **NEW: Semantic Image Search** - Search images by natural language descriptions
+- 🗃️ **Vector Database** - Automatically caption and index images for retrieval
+- 📊 **Gallery View** - Browse all indexed image-caption pairs
 - 💬 Interactive chat interface
 - 🧠 **Powered by LLaVA One Vision** - State-of-the-art vision-language model
 - 🖼️ Image gallery with lightbox view
 - 🚀 Direct model integration (no external API needed)
+
+## 🆕 Image Search System
+
+This application now includes a powerful semantic image search feature! Upload images, automatically generate captions using LLaVA, and search for them using natural language queries.
+
+**See [IMAGE_SEARCH_README.md](IMAGE_SEARCH_README.md) for detailed documentation.**
+
+### Quick Start - Image Search
+
+1. Navigate to **Upload & Index** page
+2. Upload images (drag-and-drop supported)
+3. LLaVA automatically generates captions
+4. Go to **Search** page and enter queries like:
+   - "a man holding a gun"
+   - "outdoor landscape"
+   - "group of people"
+5. View results ranked by similarity!
 
 ## What is LLaVA One Vision?
 
@@ -116,13 +135,16 @@ model_path="lmms-lab/llava-onevision-qwen2-72b-si"  # 72B model
 ## Architecture
 
 ```
-app.py                  # Flask web server
+app.py                  # Flask web server with image search routes
 llava_backend.py        # LLaVA One Vision model interface
-static/
-  ├── css/style.css     # UI styling
-  └── js/app.js         # Frontend logic
+vector_db.py            # ChromaDB vector database for image search
 templates/
-  └── index.html        # HTML structure
+  ├── base.html         # Base template with navigation
+  ├── upload.html       # Upload & index images page
+  ├── search.html       # Search images page
+  └── gallery.html      # View all indexed images
+uploads/                # Uploaded images storage
+chroma_db/              # Vector database storage
 LLaVA-NeXT/             # LLaVA One Vision repository
 ```
 

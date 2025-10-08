@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}Search Images - LLaVA Image Search{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-header p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+    
+    .search-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto 2rem;
+    }
+    
+    .search-box {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .search-input {
+        flex: 1;
+        padding: 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+    }
+    
+    .search-input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    .search-btn {
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: bold;
+    }
+    
+    .search-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .search-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .example-queries {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .example-queries h4 {
+        margin-bottom: 0.5rem;
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .example-tag {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 15px;
+        margin: 0.25rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    
+    .example-tag:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .results-section {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+    }
+    
+    .results-count {
+        font-size: 1.1rem;
+        color: #333;
+    }
+    
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .result-card {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .result-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    }
+    
+    .result-image {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+    
+    .result-info {
+        padding: 1rem;
+    }
+    
+    .result-caption {
+        color: #333;
+        line-height: 1.6;
+        margin-bottom: 0.5rem;
+    }
+    
+    .result-similarity {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 10px;
+        color: #666;
+    }
+    
+    .no-results-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 3rem;
+    }
+    
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Modal for image preview */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.9);
+    }
+    
+    .modal-content {
+        margin: auto;
+        display: block;
+        max-width: 90%;
+        max-height: 90%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .modal-close {
+        position: absolute;
+        top: 20px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .modal-close:hover {
+        color: #bbb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🔍 Search Images</h1>
+    <p>Find images using natural language descriptions</p>
+</div>
+
+<div class="search-section">
+    <div class="search-box">
+        <input 
+            type="text" 
+            class="search-input" 
+            id="search-input" 
+            placeholder="Describe what you're looking for... (e.g., 'a man holding a gun')"
+            autocomplete="off"
+        >
+        <button class="search-btn" id="search-btn">Search</button>
+    </div>
+    
+    <div class="example-queries">
+        <h4>💡 Example searches:</h4>
+        <span class="example-tag" onclick="searchExample('a person smiling')">a person smiling</span>
+        <span class="example-tag" onclick="searchExample('outdoor scene')">outdoor scene</span>
+        <span class="example-tag" onclick="searchExample('food and drinks')">food and drinks</span>
+        <span class="example-tag" onclick="searchExample('animal')">animal</span>
+        <span class="example-tag" onclick="searchExample('building or architecture')">building or architecture</span>
+    </div>
+</div>
+
+<div class="results-section" id="results-section" style="display: none;">
+    <div class="results-header">
+        <div class="results-count" id="results-count">0 results</div>
+        <div id="query-display"></div>
+    </div>
+    <div class="results-grid" id="results-grid"></div>
+</div>
+
+<div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Searching through images...</p>
+</div>
+
+<!-- Modal for image preview -->
+<div id="image-modal" class="modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <img class="modal-content" id="modal-image">
+</div>
+
+<script>
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const resultsSection = document.getElementById('results-section');
+    const resultsGrid = document.getElementById('results-grid');
+    const resultsCount = document.getElementById('results-count');
+    const queryDisplay = document.getElementById('query-display');
+    const loading = document.getElementById('loading');
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    
+    // Search on button click
+    searchBtn.addEventListener('click', performSearch);
+    
+    // Search on Enter key
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    
+    async function performSearch() {
+        const query = searchInput.value.trim();
+        if (!query) {
+            alert('Please enter a search query');
+            return;
+        }
+        
+        // Show loading
+        loading.style.display = 'block';
+        resultsSection.style.display = 'none';
+        searchBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/search-images', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: query,
+                    n_results: 20
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                displayResults(data.results, query);
+            } else {
+                alert('Search failed: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error performing search: ' + error.message);
+        } finally {
+            loading.style.display = 'none';
+            searchBtn.disabled = false;
+        }
+    }
+    
+    function displayResults(results, query) {
+        resultsGrid.innerHTML = '';
+        resultsSection.style.display = 'block';
+        
+        resultsCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''}`;
+        queryDisplay.textContent = `Query: "${query}"`;
+        
+        if (results.length === 0) {
+            resultsGrid.innerHTML = `
+                <div class="no-results">
+                    <div class="no-results-icon">🔍</div>
+                    <h3>No results found</h3>
+                    <p>Try a different search query or upload more images</p>
+                </div>
+            `;
+            return;
+        }
+        
+        results.forEach(result => {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.onclick = () => openModal(result.url);
+            
+            const similarity = (result.similarity * 100).toFixed(1);
+            
+            card.innerHTML = `
+                <img src="${result.url}" alt="${result.caption}" class="result-image">
+                <div class="result-info">
+                    <div class="result-caption">${result.caption}</div>
+                    <span class="result-similarity">${similarity}% match</span>
+                </div>
+            `;
+            
+            resultsGrid.appendChild(card);
+        });
+    }
+    
+    function searchExample(query) {
+        searchInput.value = query;
+        performSearch();
+    }
+    
+    function openModal(imageUrl) {
+        modal.style.display = 'block';
+        modalImage.src = imageUrl;
+    }
+    
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+    
+    // Close modal on click outside image
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+</script>
+{% endblock %}
+
